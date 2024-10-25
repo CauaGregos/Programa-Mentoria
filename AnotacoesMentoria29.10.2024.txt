@@ -1,0 +1,85 @@
+-- LIMIT and OFFSET
+
+if our has a big table in database use limit to take limited rows
+
+select * from clients 
+limit 10;
+
+if our use "limit" with "order by" can make a rank by value ordened
+
+select * from clients 
+order by value desc
+limit 10;
+
+that application can use command "offset" with "limit" to generate 
+pagination rows
+
+select * from clients 
+order by value desc
+limit 10 offset 1; --> here you skip first row. When value is 2 or 3
+the rows are skipped
+
+-- Function and Procedures
+
+can't use CRUD functions in procs
+functions always returns a value 
+procedure returns 1 or more values
+function are used with (SELECT, INSERT, UPDATE)
+When you call a proc use command "call"
+
+-- Exemples Functons
+
+
+CREATE FUNCTION fn_CalcularIdade (@DataNascimento DATE)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @Idade INT; -- daclare variable
+    SET @Idade = DATEDIFF(YEAR, @DataNascimento, GETDATE()) get diff between @DataNascimento and actual date
+
+                -- Here if month of DataNascimento or day is highter of 
+                    GETDATE() subtract DATEDIFF()
+                     
+                 - CASE WHEN (MONTH(@DataNascimento) > MONTH(GETDATE())) 
+                         OR (MONTH(@DataNascimento) = MONTH(GETDATE()) AND DAY(@DataNascimento) > DAY(GETDATE()))
+                    THEN 1 ELSE 0 END;
+    RETURN @Idade;
+END;
+
+-- Exemples Functions prontas
+
+
+
+
+
+
+-- Problems of simultaneity
+
+- Dirty read: The transaction T1 modify a row. Then T2 
+  read this row before T1 execute "commit". If T1 execute a 
+  "rollback", T2 will have read not persisted row
+  
+- Non-repeatable read: The transaction T1 read a row. Then
+  T2 modify or delete this row and execute "commit". If T1 
+  read again recive a different result
+  
+- Phantom: The transaction T1 read a lineset "N" that satisfy
+  a search condition. So the trasaction execute commands SQL that
+  generate one or more rows that satify the same search condition used
+  for T1. If T1 reapeat initial consult, read different lineset
+
+-- transaction isolation level
+
+- Read uncommited
+	reads all data indenpendently any changes was committed
+	
+	
+	
+
+
+
+
+
+
+VOCABULARIO:
+ - Lineset -> Conjunto de linhas
