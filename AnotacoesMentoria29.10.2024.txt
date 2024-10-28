@@ -46,13 +46,6 @@ BEGIN
     RETURN @Idade;
 END;
 
--- Exemples Functions prontas
-
-
-
-
-
-
 -- Problems of simultaneity
 
 - Dirty read: The transaction T1 modify a row. Then T2 
@@ -72,9 +65,195 @@ END;
 
 - Read uncommited
 	reads all data indenpendently any changes was committed
+  -- open to Dirty read, Non-repeatable and Phantom
+
+- Read committed
+  reads only data that was committed
+	 -- open to Non-repeatable and Phantom
+
+- Repeatable read
+  Isso significa que se uma transação lê uma linha de 
+  dados, ela continuará vendo o mesmo valor dessa linha 
+  até o final da transação, independentemente de outras 
+  transações que possam estar alterando essa linha ao mesmo tempo.
+  -- open to Phantom
+
+- serialazible
+  When reading a querie the trasaction lock the table, so others trasaction
+  only read before first transaction commit
 	
+- snapshot isolation
+  When used this is created a version of the data base
+  -- close to all problems but, need to revise the consult to avoid conflits
 	
-	
+
+
+
+
+
+
+
+
+O controle de concorrência em bancos de dados é um conjunto de técnicas usadas para 
+gerenciar o acesso simultâneo aos dados, mantendo a integridade e consistência das informações. 
+Duas abordagens amplamente discutidas para isso são os modelos **ACID** e **BASE**, que apresentam 
+diferentes filosofias e adequações para diferentes tipos de aplicações.
+
+### Modelo ACID
+
+O modelo **ACID** é ideal para sistemas que exigem transações seguras e consistentes, como 
+bancos e sistemas financeiros. O termo **ACID** refere-se a quatro propriedades:
+
+1. **Atomicidade (A)**: Cada transação é "atômica", ou seja, ela acontece por completo ou 
+não acontece. Se ocorrer uma falha, todas as operações feitas na transação são revertidas.
+
+2. **Consistência (C)**: Após cada transação, o banco de dados deve estar em um estado 
+consistente. Isso significa que as regras do banco de dados, como restrições e integridade
+ referencial, sempre serão mantidas.
+
+3. **Isolamento (I)**: As transações são isoladas umas das outras, impedindo que operações 
+concorrentes interfiram nos resultados. Cada transação deve ocorrer de maneira independente das outras.
+
+4. **Durabilidade (D)**: Uma vez que uma transação é confirmada (commit), as alterações 
+feitas são permanentes, mesmo em caso de falha de sistema.
+
+**Quando usar ACID**: Esse modelo é essencial para aplicativos que precisam de uma 
+estrutura rígida e segura, onde cada transação deve garantir integridade total e consistência 
+de dados, como sistemas bancários, de pagamentos e financeiros em geral.
+
+### Modelo BASE
+
+**BASE** é uma abordagem mais flexível e foi desenvolvida para sistemas que precisam
+ ser escaláveis e distribuir dados em várias máquinas, o que é comum em aplicações 
+ de grande porte e altamente distribuídas, como redes sociais e e-commerces.
+  O acrônimo **BASE** significa:
+
+1. **Basic Availability (Disponibilidade Básica)**: O sistema deve estar sempre 
+disponível para atender a consultas, mesmo que alguns nós do sistema estejam temporariamente
+indisponíveis.
+
+2. **Soft State (Estado Temporário)**: Os dados podem estar em um estado temporário
+ ou inconsistente, permitindo uma certa flexibilidade. Isso significa que, no curto 
+ prazo, uma leitura pode não refletir o estado mais atualizado dos dados.
+
+3. **Eventual Consistency (Consistência Eventual)**: Em vez de garantir consistência 
+imediata, o sistema garante que, eventualmente, todos os dados estarão consistentes. 
+Isso é adequado para sistemas distribuídos onde a consistência em tempo real não é essencial.
+
+**Quando usar BASE**: O modelo BASE é mais adequado para aplicações que lidam com 
+grandes volumes de dados, precisam de escalabilidade horizontal e toleram certa inconsistência
+ temporária, como redes sociais, sistemas de busca e sistemas de recomendação.
+
+### Comparação entre ACID e BASE
+
+| Propriedade          | ACID                                            | BASE                                                |
+|----------------------|-------------------------------------------------|-----------------------------------------------------|
+| **Consistência**     | Forte (imediata e garantida)                    | Eventual (consistência garantida ao longo do tempo) |
+| **Disponibilidade**  | Menor disponibilidade em casos de alta carga    | Alta disponibilidade                                |
+| **Escalabilidade**   | Escalabilidade vertical (menos distribuída)     | Escalabilidade horizontal (alta distribuição)       |
+| **Uso**              | Aplicações críticas (financeiras, bancárias)    | Aplicações distribuídas (redes sociais, streaming)  |
+| **Latência**         | Geralmente alta devido às garantias de consistência | Baixa, priorizando resposta rápida                 |
+
+Em resumo, a escolha entre **ACID** e **BASE** depende das necessidades da aplicação. **ACID** 
+prioriza a integridade e a consistência dos dados, essencial em sistemas financeiros, enquanto 
+**BASE** oferece maior flexibilidade e escalabilidade, sendo ideal para sistemas distribuídos que
+ precisam lidar com grandes volumes de dados e que toleram inconsistências temporárias.
+
+
+
+
+
+
+SET AUTOCOMMIT = 0;
+
+
+
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+
+START TRANSACTION;
+UPDATE alunos SET aluno_nome = 'Tiago M. Júnior' WHERE aluno_numero = 1;
+
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+SELECT * FROM alunos WHERE aluno_numero = 1;  
+
+ROLLBACK;
+
+
+
+
+
+
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+
+
+START TRANSACTION;
+UPDATE alunos SET aluno_nome = 'Tiago M. Júnior' WHERE aluno_numero = 1;
+
+
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+SELECT * FROM alunos WHERE aluno_numero = 1; 
+
+
+COMMIT;
+-- run 2a transition again
+
+
+
+
+
+
+
+-- Definindo o nível de isolamento para Repeatable Read
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+
+-- Transação 1: Inicia e faz uma leitura
+START TRANSACTION;
+SELECT * FROM alunos WHERE aluno_numero = 1;  -- Suponha que veja "Tiago Mateus Junior"
+
+-- Em uma segunda sessão (Transação 2), execute o seguinte:
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+UPDATE alunos SET aluno_nome = 'Tiago M. Júnior' WHERE aluno_numero = 1;
+COMMIT;
+
+-- De volta à Transação 1, execute a leitura novamente:
+SELECT * FROM alunos WHERE aluno_numero = 1;  -- Ainda verá "Tiago Mateus Junior", sem a alteração da Transação 2
+
+-- Agora encerre a Transação 1
+COMMIT;
+
+
+
+
+
+
+
+
+
+
+-- Definindo o nível de isolamento para Serializable
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+
+-- Transação 1: Inicia e faz uma leitura de alunos em "Palmas"
+START TRANSACTION;
+SELECT * FROM alunos WHERE aluno_cidade = 'Palmas';
+
+-- Em uma segunda sessão (Transação 2), tente inserir um novo aluno na cidade de "Palmas"
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+START TRANSACTION;
+INSERT INTO alunos (aluno_numero, aluno_nome, aluno_rua, aluno_cidade) VALUES (6, 'Novo Aluno', '300', 'Palmas');
+
+-- A Transação 2 ficará bloqueada até que a Transação 1 finalize
+COMMIT; -- Finalizando a Transação 1
+
+-- Agora a Transação 2 pode confirmar
+COMMIT;
+
+SELECT * FROM alunos;
+
+
+
+
+
 
 
 
@@ -83,3 +262,4 @@ END;
 
 VOCABULARIO:
  - Lineset -> Conjunto de linhas
+ - avoid -> evitar
